@@ -3,6 +3,7 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from bot import texts
+from bot.config import Settings
 from bot.constants import ANSWER_LETTERS, Category, Cb, PayMethod
 
 
@@ -85,8 +86,17 @@ def payment(links: list[tuple[PayMethod, str]], show_i_paid: bool) -> InlineKeyb
     )
 
 
-def materials(url: str) -> InlineKeyboardMarkup | None:
-    return _kb([InlineKeyboardButton(text=texts.BTN_OPEN_MATERIALS, url=url)]) if url else None
+def materials(settings: Settings) -> InlineKeyboardMarkup | None:
+    """Доступ после оплаты: группы ТГ / ВК / Max (по ТЗ — на выбор), иначе общая ссылка на материалы."""
+    groups = [
+        (texts.BTN_OPEN_TG, settings.access_tg_url),
+        (texts.BTN_OPEN_VK, settings.access_vk_url),
+        (texts.BTN_OPEN_MAX, settings.access_max_url),
+    ]
+    rows = [[InlineKeyboardButton(text=title, url=url)] for title, url in groups if url]
+    if not rows and settings.materials_url:
+        rows = [[InlineKeyboardButton(text=texts.BTN_OPEN_MATERIALS, url=settings.materials_url)]]
+    return _kb(*rows) if rows else None
 
 
 def admin_payment(user_id: int) -> InlineKeyboardMarkup:

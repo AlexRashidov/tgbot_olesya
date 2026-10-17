@@ -90,7 +90,7 @@ async def send_payment(bot: Bot, repo: UserRepository, user: User,
 
 
 async def send_materials(bot: Bot, settings: Settings, chat_id: int, text: str) -> None:
-    markup = keyboards.materials(settings.materials_url)
+    markup = keyboards.materials(settings)
     if markup is None:
         text = f"{text}\n\n{texts.MATERIALS_NOT_CONFIGURED}"
     await bot.send_message(chat_id, text, reply_markup=markup)
