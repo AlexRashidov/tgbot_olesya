@@ -50,7 +50,35 @@ CREATE TABLE IF NOT EXISTS user_tags (
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_followup ON users(followup_next_at);
+
+-- Заказы: из бота (user_id заполнен) и с сайта (ФИО, почта, телефон).
+CREATE TABLE IF NOT EXISTS orders (
+    order_id    TEXT PRIMARY KEY,
+    channel     TEXT NOT NULL,
+    method      TEXT NOT NULL,
+    user_id     INTEGER,
+    amount      INTEGER NOT NULL,
+    status      TEXT NOT NULL DEFAULT 'new',
+    full_name   TEXT,
+    email       TEXT,
+    phone       TEXT,
+    payment_id  TEXT,
+    created_at  INTEGER NOT NULL,
+    paid_at     INTEGER
+);
+
+-- Тексты, изменённые администратором через бота (поверх значений из texts.py).
+CREATE TABLE IF NOT EXISTS text_overrides (
+    key         TEXT PRIMARY KEY,
+    value       TEXT NOT NULL,
+    updated_at  INTEGER NOT NULL
+);
 """
+
+# Колонки, добавленные после первого запуска: создаются в существующей базе автоматически.
+MIGRATIONS = {
+    "users": {"email": "TEXT"},
+}
 
 
 class Database:
@@ -73,8 +101,18 @@ class Database:
         await self._conn.execute("PRAGMA foreign_keys = ON")
         await self._conn.execute("PRAGMA journal_mode = WAL")
         await self._conn.executescript(SCHEMA)
+        await self._migrate()
         await self._conn.commit()
         logger.info("SQLite подключена: %s", self._path)
+
+    async def _migrate(self) -> None:
+        for table, columns in MIGRATIONS.items():
+            async with self.conn.execute(f"PRAGMA table_info({table})") as cur:
+                existing = {row["name"] for row in await cur.fetchall()}
+            for name, ddl in columns.items():
+                if name not in existing:
+                    await self.conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}")
+                    logger.info("Добавлена колонка %s.%s", table, name)
 
     async def close(self) -> None:
         if self._conn is not None:

@@ -17,6 +17,14 @@ def _int_list(raw: str) -> tuple[int, ...]:
     return tuple(int(x) for x in raw.replace(" ", "").split(",") if x)
 
 
+def _str_list(raw: str) -> tuple[str, ...]:
+    return tuple(x.strip().rstrip("/") for x in raw.split(",") if x.strip())
+
+
+def _bool(raw: str) -> bool:
+    return raw.strip().lower() in {"1", "true", "yes", "on", "да"}
+
+
 @dataclass(frozen=True, slots=True)
 class Settings:
     bot_token: str
@@ -27,6 +35,50 @@ class Settings:
     materials_url: str
     delay_scale: float
     scheduler_tick: int
+
+    # Продукт
+    price_rub: int
+    product_name: str
+
+    # Веб-сервер для вебхуков оплаты и формы на сайте
+    web_host: str
+    web_port: int
+    public_base_url: str  # https://bot.example.ru — адрес, по которому платёжки шлют уведомления
+    site_url: str  # адрес лендинга, куда возвращать покупателя с сайта
+    cors_origins: tuple[str, ...]
+
+    # Т-Банк (интернет-эквайринг)
+    tbank_terminal_key: str
+    tbank_password: str
+    tbank_api_url: str
+    tbank_receipt: bool
+    tbank_taxation: str
+    tbank_vat: str
+
+    # Prodamus
+    prodamus_form_url: str
+    prodamus_secret: str
+    prodamus_payment_methods: str
+
+    # Куда пускать покупателя с сайта после оплаты
+    access_tg_url: str
+    access_vk_url: str
+    access_max_url: str
+
+    # Только для локальной проверки: фальшивая форма Prodamus на /dev/payform. Никогда не включать на сервере.
+    dev_fake_payments: bool = False
+
+    @property
+    def tbank_enabled(self) -> bool:
+        return bool(self.tbank_terminal_key and self.tbank_password and self.public_base_url)
+
+    @property
+    def prodamus_enabled(self) -> bool:
+        return bool(self.prodamus_form_url and self.prodamus_secret and self.public_base_url)
+
+    @property
+    def web_enabled(self) -> bool:
+        return self.web_port > 0
 
 
 def _database_path(url: str) -> Path:
@@ -52,4 +104,24 @@ def load_settings() -> Settings:
         materials_url=os.getenv("MATERIALS_URL", "").strip(),
         delay_scale=float(os.getenv("DELAY_SCALE", "1")),
         scheduler_tick=int(os.getenv("SCHEDULER_TICK_SECONDS", str(SCHEDULER_TICK_SECONDS))),
+        price_rub=int(os.getenv("PRICE_RUB", "2500")),
+        product_name=os.getenv("PRODUCT_NAME", "Таблетка от прокрастинации").strip(),
+        web_host=os.getenv("WEB_HOST", "0.0.0.0").strip(),
+        web_port=int(os.getenv("WEB_PORT", "8080")),
+        public_base_url=os.getenv("PUBLIC_BASE_URL", "").strip().rstrip("/"),
+        site_url=os.getenv("SITE_URL", "").strip(),
+        cors_origins=_str_list(os.getenv("CORS_ORIGINS", "")),
+        tbank_terminal_key=os.getenv("TBANK_TERMINAL_KEY", "").strip(),
+        tbank_password=os.getenv("TBANK_PASSWORD", "").strip(),
+        tbank_api_url=os.getenv("TBANK_API_URL", "https://securepay.tinkoff.ru/v2").strip().rstrip("/"),
+        tbank_receipt=_bool(os.getenv("TBANK_RECEIPT", "1")),
+        tbank_taxation=os.getenv("TBANK_TAXATION", "usn_income").strip(),
+        tbank_vat=os.getenv("TBANK_VAT", "none").strip(),
+        prodamus_form_url=os.getenv("PRODAMUS_FORM_URL", "").strip().rstrip("/"),
+        prodamus_secret=os.getenv("PRODAMUS_SECRET", "").strip(),
+        prodamus_payment_methods=os.getenv("PRODAMUS_PAYMENT_METHODS", "").strip(),
+        access_tg_url=os.getenv("ACCESS_TG_URL", "").strip(),
+        access_vk_url=os.getenv("ACCESS_VK_URL", "").strip(),
+        access_max_url=os.getenv("ACCESS_MAX_URL", "").strip(),
+        dev_fake_payments=_bool(os.getenv("DEV_FAKE_PAYMENTS", "0")),
     )

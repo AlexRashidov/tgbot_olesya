@@ -1,10 +1,12 @@
 """Готовые «экраны» бота. Используются и обработчиками, и фоновым планировщиком."""
 
+import html
+
 from aiogram import Bot
 
 from bot import keyboards, texts
 from bot.config import Settings
-from bot.constants import ANSWER_LETTERS, QUESTIONS_COUNT, Category, SalesStage, Tag
+from bot.constants import ANSWER_LETTERS, QUESTIONS_COUNT, Category, PayMethod, SalesStage, Tag
 from bot.db import User, UserRepository
 from bot.services import quiz
 
@@ -16,7 +18,7 @@ async def send_start(bot: Bot, chat_id: int) -> None:
 async def send_question(bot: Bot, chat_id: int, number: int) -> None:
     question, options = texts.QUESTIONS[number - 1]
     body = "\n\n".join(
-        texts.OPTION_TEMPLATE.format(letter=letter, text=text)
+        texts.OPTION_TEMPLATE.format(letter=letter, text=html.escape(text, quote=False))
         for letter, text in zip(ANSWER_LETTERS, options)
     )
     await bot.send_message(
@@ -27,11 +29,12 @@ async def send_question(bot: Bot, chat_id: int, number: int) -> None:
 
 
 def _titles(categories: list[Category]) -> str:
-    return "\n".join(f"• {texts.CATEGORY_TITLES[c]}" for c in categories)
+    return "\n".join(f"• {html.escape(texts.CATEGORY_TITLES[c], quote=False)}" for c in categories)
 
 
 def category_text(category: Category) -> str:
-    return texts.RESULT_HEADER.format(title=texts.CATEGORY_TITLES[category]) + texts.RESULTS[category]
+    title = html.escape(texts.CATEGORY_TITLES[category], quote=False)
+    return texts.RESULT_HEADER.format(title=title) + texts.RESULTS[category]
 
 
 async def send_category(bot: Bot, chat_id: int, category: Category) -> None:
@@ -68,18 +71,21 @@ async def send_product(bot: Bot, repo: UserRepository, chat_id: int) -> None:
     await bot.send_message(chat_id, texts.PRODUCT, reply_markup=keyboards.product())
 
 
-async def send_payment(bot: Bot, repo: UserRepository, settings: Settings, user: User) -> None:
-    if user.is_customer:
-        await send_materials(bot, settings, user.user_id, texts.ALREADY_CUSTOMER)
-        return
-    if not (settings.payment_url_ru or settings.payment_url_foreign):
+async def send_payment(bot: Bot, repo: UserRepository, user: User,
+                       links: list[tuple[PayMethod, str, bool]]) -> None:
+    """links — (способ оплаты, ссылка, подтверждается ли автоматически)."""
+    if not links:
         await bot.send_message(user.user_id, texts.PAYMENT_NOT_CONFIGURED)
         return
     await repo.set_payment_pending(user.user_id)
+    manual = any(not automatic for _, _, automatic in links)
+    text = texts.PAYMENT_MANUAL if manual else texts.PAYMENT
+    if user.email:
+        text += "\n\n" + texts.PAYMENT_RECEIPT_EMAIL.format(email=html.escape(user.email))
     await bot.send_message(
         user.user_id,
-        texts.PAYMENT,
-        reply_markup=keyboards.payment(settings.payment_url_ru, settings.payment_url_foreign),
+        text,
+        reply_markup=keyboards.payment([(method, url) for method, url, _ in links], show_i_paid=manual),
     )
 
 

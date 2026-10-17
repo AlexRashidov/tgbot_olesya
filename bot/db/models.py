@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import aiosqlite
 
-from bot.constants import Category, PurchaseStatus
+from bot.constants import Category, OrderChannel, OrderStatus, PayMethod, PurchaseStatus
 
 
 @dataclass(slots=True)
@@ -25,6 +25,7 @@ class User:
     followup_status: bool
     followup_step: int
     followup_next_at: int | None
+    email: str | None
 
     @property
     def is_customer(self) -> bool:
@@ -53,6 +54,44 @@ class User:
             followup_status=bool(row["followup_status"]),
             followup_step=row["followup_step"],
             followup_next_at=row["followup_next_at"],
+            email=row["email"],
+        )
+
+
+@dataclass(slots=True)
+class Order:
+    order_id: str
+    channel: OrderChannel
+    method: PayMethod
+    user_id: int | None
+    amount: int
+    status: OrderStatus
+    full_name: str | None
+    email: str | None
+    phone: str | None
+    payment_id: str | None
+    created_at: int
+    paid_at: int | None
+
+    @property
+    def is_paid(self) -> bool:
+        return self.status == OrderStatus.PAID
+
+    @classmethod
+    def from_row(cls, row: aiosqlite.Row) -> "Order":
+        return cls(
+            order_id=row["order_id"],
+            channel=OrderChannel(row["channel"]),
+            method=PayMethod(row["method"]),
+            user_id=row["user_id"],
+            amount=row["amount"],
+            status=OrderStatus(row["status"]),
+            full_name=row["full_name"],
+            email=row["email"],
+            phone=row["phone"],
+            payment_id=row["payment_id"],
+            created_at=row["created_at"],
+            paid_at=row["paid_at"],
         )
 
 

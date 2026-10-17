@@ -18,7 +18,9 @@ from bot.db import User, UserRepository
 
 logger = logging.getLogger(__name__)
 
-FOLLOWUP_TEXTS = (texts.FOLLOWUP_1, texts.FOLLOWUP_2, texts.FOLLOWUP_3)
+def followup_text(step: int) -> str:
+    # Читаем при каждой отправке, чтобы применялись тексты, изменённые через бота.
+    return (texts.FOLLOWUP_1, texts.FOLLOWUP_2, texts.FOLLOWUP_3)[step]
 
 
 class Scheduler:
@@ -56,7 +58,7 @@ class Scheduler:
             await self._repo.advance_followup(user.user_id, step, None)
             return
 
-        sent = await self._safe_send(user.user_id, FOLLOWUP_TEXTS[step], keyboards.followup(step + 1))
+        sent = await self._safe_send(user.user_id, followup_text(step), keyboards.followup(step + 1))
         if sent is None:
             return  # временная ошибка — попробуем на следующем тике
 

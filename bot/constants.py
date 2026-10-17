@@ -37,6 +37,21 @@ class PurchaseStatus(StrEnum):
     PAID = "paid"
 
 
+class OrderStatus(StrEnum):
+    NEW = "new"
+    PAID = "paid"
+
+
+class OrderChannel(StrEnum):
+    BOT = "bot"
+    SITE = "site"
+
+
+class PayMethod(StrEnum):
+    RU = "ru"  # карта РФ — Т-Банк
+    FOREIGN = "foreign"  # иностранная карта — Prodamus
+
+
 class SalesStage(StrEnum):
     START = "start"
     QUIZ = "quiz"
@@ -86,6 +101,12 @@ class Cb:
     I_PAID = "pay:done"
     ADMIN_CONFIRM_PREFIX = "adm:ok"  # adm:ok:<user_id>
     ADMIN_REJECT_PREFIX = "adm:no"  # adm:no:<user_id>
+    # Редактор текстов (только для администраторов)
+    TEXTS_MENU = "tx:menu"
+    TEXTS_GROUP_PREFIX = "tx:g"  # tx:g:<номер группы>
+    TEXTS_ITEM_PREFIX = "tx:k"  # tx:k:<ключ текста>
+    TEXTS_EDIT_PREFIX = "tx:e"  # tx:e:<ключ текста>
+    TEXTS_RESET_PREFIX = "tx:r"  # tx:r:<ключ текста>
 
 
 # Интервалы фоновых сообщений (в секундах, до умножения на DELAY_SCALE из конфига).

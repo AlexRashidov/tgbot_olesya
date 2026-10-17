@@ -7,12 +7,15 @@ from bot.constants import (
     QUESTIONS_COUNT,
     RESULT_TAGS,
     Category,
+    OrderChannel,
+    OrderStatus,
+    PayMethod,
     PurchaseStatus,
     SalesStage,
     Tag,
 )
 from bot.db.database import Database
-from bot.db.models import User, score_column
+from bot.db.models import Order, User, score_column
 
 
 def now() -> int:
@@ -65,6 +68,9 @@ class UserRepository:
 
     async def set_product_interest(self, user_id: int) -> None:
         await self._update(user_id, product_interest=1)
+
+    async def set_email(self, user_id: int, email: str) -> None:
+        await self._update(user_id, email=email)
 
     async def set_followup_allowed(self, user_id: int, allowed: bool) -> None:
         await self._update(user_id, followup_status=int(allowed))
@@ -238,4 +244,77 @@ class UserRepository:
             by_tag = {r["tag"]: r["n"] for r in await cur.fetchall()}
         result["product_viewed"] = by_tag.get(Tag.PRODUCT_VIEWED.value, 0)
         result["purchase_clicked"] = by_tag.get(Tag.PURCHASE_CLICKED.value, 0)
+        async with self._db.conn.execute(
+            "SELECT channel, COUNT(*) AS n FROM orders WHERE status = ? GROUP BY channel",
+            (OrderStatus.PAID.value,),
+        ) as cur:
+            by_channel = {r["channel"]: r["n"] for r in await cur.fetchall()}
+        result["paid_bot"] = by_channel.get(OrderChannel.BOT.value, 0)
+        result["paid_site"] = by_channel.get(OrderChannel.SITE.value, 0)
         return result
+
+
+class OrderRepository:
+    def __init__(self, db: Database) -> None:
+        self._db = db
+
+    async def create(self, order_id: str, channel: OrderChannel, method: PayMethod, amount: int,
+                     user_id: int | None = None, full_name: str | None = None, email: str | None = None,
+                     phone: str | None = None) -> Order:
+        await self._db.conn.execute(
+            """
+            INSERT INTO orders (order_id, channel, method, user_id, amount, full_name, email, phone, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (order_id, channel.value, method.value, user_id, amount, full_name, email, phone, now()),
+        )
+        await self._db.conn.commit()
+        order = await self.get(order_id)
+        assert order is not None
+        return order
+
+    async def get(self, order_id: str) -> Order | None:
+        async with self._db.conn.execute("SELECT * FROM orders WHERE order_id = ?", (order_id,)) as cur:
+            row = await cur.fetchone()
+        return Order.from_row(row) if row else None
+
+    async def set_payment_id(self, order_id: str, payment_id: str) -> None:
+        await self._db.conn.execute("UPDATE orders SET payment_id = ? WHERE order_id = ?", (payment_id, order_id))
+        await self._db.conn.commit()
+
+    async def mark_paid(self, order_id: str, payment_id: str | None) -> bool:
+        """True — заказ только что стал оплаченным; False — уже был оплачен (повторный вебхук)."""
+        cur = await self._db.conn.execute(
+            """
+            UPDATE orders SET status = ?, paid_at = ?, payment_id = COALESCE(?, payment_id)
+            WHERE order_id = ? AND status != ?
+            """,
+            (OrderStatus.PAID.value, now(), payment_id, order_id, OrderStatus.PAID.value),
+        )
+        await self._db.conn.commit()
+        return cur.rowcount == 1
+
+
+class TextRepository:
+    """Тексты, изменённые администратором через бота."""
+
+    def __init__(self, db: Database) -> None:
+        self._db = db
+
+    async def all(self) -> dict[str, str]:
+        async with self._db.conn.execute("SELECT key, value FROM text_overrides") as cur:
+            return {row["key"]: row["value"] for row in await cur.fetchall()}
+
+    async def set(self, key: str, value: str) -> None:
+        await self._db.conn.execute(
+            """
+            INSERT INTO text_overrides (key, value, updated_at) VALUES (?, ?, ?)
+            ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+            """,
+            (key, value, now()),
+        )
+        await self._db.conn.commit()
+
+    async def delete(self, key: str) -> None:
+        await self._db.conn.execute("DELETE FROM text_overrides WHERE key = ?", (key,))
+        await self._db.conn.commit()

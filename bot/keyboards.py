@@ -3,7 +3,7 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from bot import texts
-from bot.constants import ANSWER_LETTERS, Category, Cb
+from bot.constants import ANSWER_LETTERS, Category, Cb, PayMethod
 
 
 def _kb(*rows: list[InlineKeyboardButton]) -> InlineKeyboardMarkup:
@@ -77,11 +77,11 @@ def followup(step: int) -> InlineKeyboardMarkup:
     return _kb(_btn(texts.BTN_BUY, Cb.BUY), _btn(texts.BTN_CONTENTS, Cb.CONTENTS))
 
 
-def payment(url_ru: str, url_foreign: str) -> InlineKeyboardMarkup:
+def payment(links: list[tuple[PayMethod, str]], show_i_paid: bool) -> InlineKeyboardMarkup:
+    titles = {PayMethod.RU: texts.BTN_PAY_RU, PayMethod.FOREIGN: texts.BTN_PAY_FOREIGN}
     return _kb(
-        [InlineKeyboardButton(text=texts.BTN_PAY_RU, url=url_ru)] if url_ru else [],
-        [InlineKeyboardButton(text=texts.BTN_PAY_FOREIGN, url=url_foreign)] if url_foreign else [],
-        _btn(texts.BTN_I_PAID, Cb.I_PAID),
+        *([InlineKeyboardButton(text=titles[method], url=url)] for method, url in links),
+        _btn(texts.BTN_I_PAID, Cb.I_PAID) if show_i_paid else [],
     )
 
 
