@@ -4,6 +4,7 @@ from aiogram import Bot, F, Router
 from aiogram.types import CallbackQuery
 
 from bot import keyboards, texts
+from bot.config import Settings
 from bot.constants import Cb, SalesStage
 from bot.db import User, UserRepository
 from bot.services import screens
@@ -26,16 +27,18 @@ async def example(callback: CallbackQuery, user: User, repo: UserRepository) -> 
 
 
 @router.callback_query(F.data.in_({Cb.ABOUT_SYSTEM, Cb.BACK_TO_PRODUCT}))
-async def product(callback: CallbackQuery, user: User, repo: UserRepository, bot: Bot) -> None:
+async def product(callback: CallbackQuery, user: User, repo: UserRepository, settings: Settings, bot: Bot) -> None:
     await callback.answer()
-    await screens.send_product(bot, repo, user.user_id)
+    await screens.send_product(bot, repo, settings, user.user_id)
 
 
 @router.callback_query(F.data == Cb.CONTENTS)
-async def contents(callback: CallbackQuery, user: User, repo: UserRepository) -> None:
+async def contents(callback: CallbackQuery, user: User, repo: UserRepository, settings: Settings) -> None:
     await callback.answer()
     await repo.set_stage(user.user_id, SalesStage.CONTENTS)
-    await callback.message.answer(texts.CONTENTS, reply_markup=keyboards.contents())
+    await callback.message.answer(
+        texts.CONTENTS, reply_markup=keyboards.contents(screens.buy_url(settings, user.user_id))
+    )
 
 
 @router.callback_query(F.data == Cb.THINK)

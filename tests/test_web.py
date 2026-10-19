@@ -181,6 +181,48 @@ def test_checkout_validation(tmp_path, body, status):
     run(scenario())
 
 
+def test_site_purchase_from_bot_link_unlocks_bot(tmp_path):
+    """Бот → «Купить» → лендинг с ?tg=<id> → оплата → материалы в боте и конец прогрева."""
+    async def scenario():
+        settings, db, users, orders, bot, payments, client = await _setup(tmp_path)
+        try:
+            await users.upsert(55, "anna", "Анна")
+            body = {"method": "foreign", "lastName": "a", "firstName": "b", "middleName": "c",
+                    "email": "a@b.ru", "phone": "1", "consents": True, "telegramId": "55"}
+            data = await (await client.post("/api/checkout", json=body)).json()
+            order = await orders.get(data["orderId"])
+            assert order.channel == OrderChannel.SITE and order.user_id == 55
+            assert (await users.get(55)).purchase_status == PurchaseStatus.PENDING
+
+            form, signature = _prodamus_notification(order.order_id)
+            await client.post("/webhooks/prodamus", data=form, headers={"Sign": signature})
+
+            user = await users.get(55)
+            assert user.is_customer and user.followup_next_at is None
+            assert any(chat == 55 for chat, _ in bot.sent)  # материалы пришли в бот
+        finally:
+            await client.close()
+            await db.close()
+
+    run(scenario())
+
+
+def test_unknown_telegram_id_is_ignored(tmp_path):
+    async def scenario():
+        settings, db, users, orders, bot, payments, client = await _setup(tmp_path)
+        try:
+            body = {"method": "foreign", "lastName": "a", "firstName": "b", "middleName": "c",
+                    "email": "a@b.ru", "phone": "1", "consents": True, "telegramId": "999999"}
+            data = await (await client.post("/api/checkout", json=body)).json()
+            assert (await orders.get(data["orderId"])).user_id is None
+            assert await payments.bot_user_for_checkout("abc") is None
+        finally:
+            await client.close()
+            await db.close()
+
+    run(scenario())
+
+
 def test_dev_fake_payform_pays_order(tmp_path):
     async def scenario():
         settings, db, users, orders, bot, payments, client = await _setup(tmp_path, dev_fake_payments=True)

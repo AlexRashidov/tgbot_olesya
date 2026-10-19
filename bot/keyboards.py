@@ -54,28 +54,35 @@ def example() -> InlineKeyboardMarkup:
     return _kb(_btn(texts.BTN_ABOUT_SYSTEM, Cb.ABOUT_SYSTEM))
 
 
-def product() -> InlineKeyboardMarkup:
+def _buy(buy_url: str | None) -> list[InlineKeyboardButton]:
+    """«Купить»: ссылка на форму оплаты на лендинге, а если сайт не задан — оплата внутри бота."""
+    if buy_url:
+        return [InlineKeyboardButton(text=texts.BTN_BUY, url=buy_url)]
+    return _btn(texts.BTN_BUY, Cb.BUY)
+
+
+def product(buy_url: str | None = None) -> InlineKeyboardMarkup:
     return _kb(
-        _btn(texts.BTN_BUY, Cb.BUY),
+        _buy(buy_url),
         _btn(texts.BTN_CONTENTS, Cb.CONTENTS),
         _btn(texts.BTN_THINK, Cb.THINK),
     )
 
 
-def contents() -> InlineKeyboardMarkup:
-    return _kb(_btn(texts.BTN_BUY, Cb.BUY), _btn(texts.BTN_BACK_TO_PRODUCT, Cb.BACK_TO_PRODUCT))
+def contents(buy_url: str | None = None) -> InlineKeyboardMarkup:
+    return _kb(_buy(buy_url), _btn(texts.BTN_BACK_TO_PRODUCT, Cb.BACK_TO_PRODUCT))
 
 
 def think() -> InlineKeyboardMarkup:
     return _kb(_btn(texts.BTN_BACK_TO_PRODUCT, Cb.BACK_TO_PRODUCT))
 
 
-def followup(step: int) -> InlineKeyboardMarkup:
+def followup(step: int, buy_url: str | None = None) -> InlineKeyboardMarkup:
     if step == 1:
         return _kb(_btn(texts.BTN_MY_RESULT, Cb.MY_RESULT))
     if step == 2:
         return _kb(_btn(texts.BTN_ABOUT_PILL, Cb.ABOUT_SYSTEM))
-    return _kb(_btn(texts.BTN_BUY, Cb.BUY), _btn(texts.BTN_CONTENTS, Cb.CONTENTS))
+    return _kb(_buy(buy_url), _btn(texts.BTN_CONTENTS, Cb.CONTENTS))
 
 
 def payment(links: list[tuple[PayMethod, str]], show_i_paid: bool) -> InlineKeyboardMarkup:

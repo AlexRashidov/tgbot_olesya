@@ -15,6 +15,7 @@ from bot import keyboards, texts
 from bot.config import Settings
 from bot.constants import FOLLOWUP_DELAYS, FOLLOWUP_STEPS, QUIZ_REMINDER_DELAY, SEND_PAUSE_SECONDS
 from bot.db import User, UserRepository
+from bot.services import screens
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +59,8 @@ class Scheduler:
             await self._repo.advance_followup(user.user_id, step, None)
             return
 
-        sent = await self._safe_send(user.user_id, followup_text(step), keyboards.followup(step + 1))
+        markup = keyboards.followup(step + 1, screens.buy_url(self._settings, user.user_id))
+        sent = await self._safe_send(user.user_id, followup_text(step), markup)
         if sent is None:
             return  # временная ошибка — попробуем на следующем тике
 

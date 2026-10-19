@@ -1,6 +1,7 @@
 """Готовые «экраны» бота. Используются и обработчиками, и фоновым планировщиком."""
 
 import html
+from urllib.parse import urlencode, urlsplit, urlunsplit
 
 from aiogram import Bot
 
@@ -64,11 +65,23 @@ async def send_result(bot: Bot, chat_id: int, user: User) -> None:
     await send_category(bot, chat_id, leaders[-1])
 
 
-async def send_product(bot: Bot, repo: UserRepository, chat_id: int) -> None:
+def buy_url(settings: Settings, user_id: int) -> str | None:
+    """Ссылка на форму оплаты на лендинге. Telegram ID нужен, чтобы после оплаты на сайте
+    бот выдал материалы и остановил продающие сообщения."""
+    if not settings.site_url:
+        return None
+    parts = urlsplit(settings.site_url)
+    query = urlencode({"tg": user_id, "utm_source": "telegram_bot"})
+    if parts.query:
+        query = f"{parts.query}&{query}"
+    return urlunsplit((parts.scheme, parts.netloc, parts.path or "/", query, "pricing"))
+
+
+async def send_product(bot: Bot, repo: UserRepository, settings: Settings, chat_id: int) -> None:
     await repo.set_product_interest(chat_id)
     await repo.add_tags(chat_id, [Tag.PRODUCT_VIEWED])
     await repo.set_stage(chat_id, SalesStage.PRODUCT)
-    await bot.send_message(chat_id, texts.PRODUCT, reply_markup=keyboards.product())
+    await bot.send_message(chat_id, texts.PRODUCT, reply_markup=keyboards.product(buy_url(settings, chat_id)))
 
 
 async def send_payment(bot: Bot, repo: UserRepository, user: User,

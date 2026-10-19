@@ -170,8 +170,11 @@ async def checkout(request: web.Request) -> web.Response:
     if data.get("consents") is not True:
         return _json_error("Нужно принять условия и дать согласия.")
 
+    # Пришёл из бота по ссылке с ?tg=<id> — привязываем заказ к пользователю бота.
+    user_id = await payments.bot_user_for_checkout(data.get("telegramId"))
+
     link = await payments.create_link(
-        method, OrderChannel.SITE,
+        method, OrderChannel.SITE, user_id=user_id,
         full_name=f"{last_name} {first_name} {middle_name}", email=email, phone=phone,
     )
     if link is None:

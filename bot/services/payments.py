@@ -125,6 +125,20 @@ class PaymentService:
                 links.append(link)
         return links
 
+    async def bot_user_for_checkout(self, raw_id: object) -> int | None:
+        """Telegram ID из ссылки «Купить» в боте → пользователь бота (или None, если не найден).
+
+        Заодно отмечает, что пользователь перешёл к оплате (статус pending, теги purchase_clicked)."""
+        text = str(raw_id).strip() if isinstance(raw_id, (str, int)) else ""
+        if not text.isdigit() or len(text) > 15:
+            return None
+        user = await self._users.get(int(text))
+        if user is None:
+            return None
+        if not user.is_customer:
+            await self._users.set_payment_pending(user.user_id)
+        return user.user_id
+
     # ---------- Подтверждение оплаты ----------
 
     async def find_order(self, *ids: str) -> Order | None:
@@ -148,10 +162,13 @@ class PaymentService:
             return  # уведомление уже обрабатывали
 
         logger.info("Заказ %s оплачен (%s, %s)", order.order_id, order.channel, order.method)
+        user = await self._users.get(order.user_id) if order.user_id is not None else None
+        # Покупатель пришёл из бота (в бот или на сайт по ссылке с его Telegram ID) — выдаём материалы
+        # в боте и останавливаем продающую цепочку.
+        if user and not user.is_customer:
+            await screens.complete_purchase(self._bot, self._users, self._settings, user.user_id)
+
         if order.channel == OrderChannel.BOT and order.user_id is not None:
-            user = await self._users.get(order.user_id)
-            if user and not user.is_customer:
-                await screens.complete_purchase(self._bot, self._users, self._settings, order.user_id)
             await self._notify_admins(texts.ADMIN_ORDER_PAID_BOT.format(
                 user_id=order.user_id,
                 name=html.escape(user.first_name or "—") if user else "—",

@@ -5,6 +5,7 @@ from aiogram.filters import Command, CommandObject, CommandStart
 from aiogram.types import Message
 
 from bot import keyboards, texts
+from bot.config import Settings
 from bot.db import User, UserRepository
 from bot.services import screens
 
@@ -34,8 +35,8 @@ async def cmd_result(message: Message, user: User, bot: Bot) -> None:
 
 
 @router.message(Command("product"))
-async def cmd_product(message: Message, repo: UserRepository, bot: Bot) -> None:
-    await screens.send_product(bot, repo, message.chat.id)
+async def cmd_product(message: Message, repo: UserRepository, settings: Settings, bot: Bot) -> None:
+    await screens.send_product(bot, repo, settings, message.chat.id)
 
 
 @router.message(Command("stop"))
