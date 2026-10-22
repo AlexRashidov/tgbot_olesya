@@ -13,20 +13,21 @@ router = Router(name="start")
 
 
 @router.message(CommandStart())
-async def cmd_start(message: Message, command: CommandObject, user: User, repo: UserRepository, bot: Bot) -> None:
+async def cmd_start(message: Message, command: CommandObject, user: User, repo: UserRepository,
+                    settings: Settings, bot: Bot) -> None:
     # Метка источника из ссылки вида t.me/<bot>?start=reels
     if command.args:
         await repo.upsert(user.user_id, user.username, user.first_name, source=command.args[:64])
 
-    if user.quiz_in_progress:
+    if user.quiz_in_progress and user.accepted_terms:
         await message.answer(texts.START_TEST_IN_PROGRESS, reply_markup=keyboards.continue_quiz())
         return
-    await screens.send_start(bot, message.chat.id)
+    await screens.send_start(bot, settings, user)
 
 
 @router.message(Command("test"))
-async def cmd_test(message: Message, bot: Bot) -> None:
-    await screens.send_start(bot, message.chat.id)
+async def cmd_test(message: Message, user: User, settings: Settings, bot: Bot) -> None:
+    await screens.send_start(bot, settings, user)
 
 
 @router.message(Command("result"))

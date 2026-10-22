@@ -26,6 +26,12 @@ class User:
     followup_step: int
     followup_next_at: int | None
     email: str | None
+    consent_at: int | None
+
+    @property
+    def accepted_terms(self) -> bool:
+        """Принял оферту, политику и согласия перед тестом."""
+        return self.consent_at is not None
 
     @property
     def is_customer(self) -> bool:
@@ -55,6 +61,7 @@ class User:
             followup_step=row["followup_step"],
             followup_next_at=row["followup_next_at"],
             email=row["email"],
+            consent_at=row["consent_at"],
         )
 
 
@@ -72,6 +79,7 @@ class Order:
     payment_id: str | None
     created_at: int
     paid_at: int | None
+    marketing_consent: bool
 
     @property
     def is_paid(self) -> bool:
@@ -92,6 +100,7 @@ class Order:
             payment_id=row["payment_id"],
             created_at=row["created_at"],
             paid_at=row["paid_at"],
+            marketing_consent=bool(row["marketing_consent"]),
         )
 
 

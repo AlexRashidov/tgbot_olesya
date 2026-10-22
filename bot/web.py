@@ -176,6 +176,7 @@ async def checkout(request: web.Request) -> web.Response:
     link = await payments.create_link(
         method, OrderChannel.SITE, user_id=user_id,
         full_name=f"{last_name} {first_name} {middle_name}", email=email, phone=phone,
+        marketing_consent=data.get("marketingConsent") is True,
     )
     if link is None:
         return _json_error("Этот способ оплаты пока недоступен. Выберите другой.", 503)

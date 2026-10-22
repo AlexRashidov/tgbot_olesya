@@ -69,6 +69,15 @@ class UserRepository:
     async def set_product_interest(self, user_id: int) -> None:
         await self._update(user_id, product_interest=1)
 
+    async def accept_terms(self, user_id: int) -> None:
+        """Фиксирует время согласия с документами (только первое нажатие)."""
+        await self._db.conn.execute(
+            "UPDATE users SET consent_at = ?, updated_at = ? WHERE user_id = ? AND consent_at IS NULL",
+            (now(), now(), user_id),
+        )
+        await self._db.conn.commit()
+        await self.add_tags(user_id, [Tag.TERMS_ACCEPTED])
+
     async def set_email(self, user_id: int, email: str) -> None:
         await self._update(user_id, email=email)
 
@@ -260,13 +269,15 @@ class OrderRepository:
 
     async def create(self, order_id: str, channel: OrderChannel, method: PayMethod, amount: int,
                      user_id: int | None = None, full_name: str | None = None, email: str | None = None,
-                     phone: str | None = None) -> Order:
+                     phone: str | None = None, marketing_consent: bool = False) -> Order:
         await self._db.conn.execute(
             """
-            INSERT INTO orders (order_id, channel, method, user_id, amount, full_name, email, phone, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO orders (order_id, channel, method, user_id, amount, full_name, email, phone,
+                                marketing_consent, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (order_id, channel.value, method.value, user_id, amount, full_name, email, phone, now()),
+            (order_id, channel.value, method.value, user_id, amount, full_name, email, phone,
+             int(marketing_consent), now()),
         )
         await self._db.conn.commit()
         order = await self.get(order_id)

@@ -24,6 +24,10 @@ def start() -> InlineKeyboardMarkup:
     return _kb(_btn(texts.BTN_START_TEST, Cb.START_TEST))
 
 
+def accept_terms() -> InlineKeyboardMarkup:
+    return _kb(_btn(texts.BTN_ACCEPT_TERMS, Cb.ACCEPT_TERMS))
+
+
 def continue_quiz() -> InlineKeyboardMarkup:
     return _kb(_btn(texts.BTN_CONTINUE_TEST, Cb.CONTINUE_TEST), _btn(texts.BTN_RESTART_TEST, Cb.RESTART_TEST))
 

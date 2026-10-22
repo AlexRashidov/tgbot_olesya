@@ -14,20 +14,36 @@ from bot.services import quiz, screens
 router = Router(name="quiz")
 
 
-@router.callback_query(F.data.in_({Cb.START_TEST, Cb.RESTART_TEST}))
-async def start_quiz(callback: CallbackQuery, user: User, repo: UserRepository, bot: Bot) -> None:
+@router.callback_query(F.data == Cb.ACCEPT_TERMS)
+async def accept_terms(callback: CallbackQuery, user: User, repo: UserRepository, bot: Bot) -> None:
+    """«Принимаю и начинаю тест»: фиксируем согласие с документами и сразу задаём первый вопрос."""
     await callback.answer()
+    await repo.accept_terms(user.user_id)
+    if callback.message is not None:
+        await callback.message.edit_reply_markup(reply_markup=None)
+    await repo.start_quiz(user.user_id)
+    await screens.send_question(bot, user.user_id, 1)
+
+
+@router.callback_query(F.data.in_({Cb.START_TEST, Cb.RESTART_TEST}))
+async def start_quiz(callback: CallbackQuery, user: User, repo: UserRepository, settings: Settings,
+                     bot: Bot) -> None:
+    await callback.answer()
+    if not user.accepted_terms:
+        # Без согласия с документами тест не начинается.
+        await screens.send_consent(bot, settings, user.user_id)
+        return
     await repo.start_quiz(user.user_id)
     await screens.send_question(bot, user.user_id, 1)
 
 
 @router.callback_query(F.data == Cb.CONTINUE_TEST)
-async def continue_quiz(callback: CallbackQuery, user: User, bot: Bot) -> None:
+async def continue_quiz(callback: CallbackQuery, user: User, settings: Settings, bot: Bot) -> None:
     await callback.answer()
-    if user.quiz_in_progress:
+    if user.quiz_in_progress and user.accepted_terms:
         await screens.send_question(bot, user.user_id, user.current_question)
     else:
-        await screens.send_start(bot, user.user_id)
+        await screens.send_start(bot, settings, user)
 
 
 @router.callback_query(F.data.startswith(f"{Cb.ANSWER_PREFIX}:"))

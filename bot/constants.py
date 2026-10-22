@@ -66,6 +66,7 @@ class SalesStage(StrEnum):
 
 
 class Tag(StrEnum):
+    TERMS_ACCEPTED = "terms_accepted"
     TEST_STARTED = "test_started"
     TEST_COMPLETED = "test_completed"
     PRODUCT_VIEWED = "product_viewed"
@@ -85,6 +86,7 @@ RESULT_TAGS = tuple(result_tag(c) for c in Category)
 class Cb:
     """Callback-данные inline-кнопок."""
 
+    ACCEPT_TERMS = "terms:accept"
     START_TEST = "test:start"
     RESTART_TEST = "test:restart"
     CONTINUE_TEST = "test:continue"

@@ -48,6 +48,7 @@ def _questions() -> tuple[TextItem, ...]:
 GROUPS: tuple[TextGroup, ...] = (
     TextGroup("Стартовое сообщение", (
         TextItem("START", "Приветствие и приглашение в тест"),
+        TextItem("CONSENT", "Документы и согласие перед тестом"),
         TextItem("START_TEST_IN_PROGRESS", "Если тест уже начат"),
     )),
     TextGroup("Вопросы теста", _questions()),
@@ -90,7 +91,7 @@ GROUPS: tuple[TextGroup, ...] = (
     TextGroup("Кнопки", tuple(
         TextItem(name, f"Кнопка «{getattr(texts, name)}»", plain=True)
         for name in (
-            "BTN_START_TEST", "BTN_RESTART_TEST", "BTN_CONTINUE_TEST", "BTN_WHAT_NEXT", "BTN_SHOW_EXAMPLE",
+            "BTN_ACCEPT_TERMS", "BTN_START_TEST", "BTN_RESTART_TEST", "BTN_CONTINUE_TEST", "BTN_WHAT_NEXT", "BTN_SHOW_EXAMPLE",
             "BTN_ABOUT_SYSTEM", "BTN_BUY", "BTN_CONTENTS", "BTN_THINK", "BTN_BACK_TO_PRODUCT",
             "BTN_MY_RESULT", "BTN_ABOUT_PILL", "BTN_OPEN_MATERIALS", "BTN_OPEN_TG", "BTN_OPEN_VK", "BTN_OPEN_MAX", "BTN_PAY_RU", "BTN_PAY_FOREIGN",
             "BTN_I_PAID",

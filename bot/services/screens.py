@@ -1,9 +1,10 @@
 """Готовые «экраны» бота. Используются и обработчиками, и фоновым планировщиком."""
 
 import html
-from urllib.parse import urlencode, urlsplit, urlunsplit
+from urllib.parse import urlencode, urljoin, urlsplit, urlunsplit
 
 from aiogram import Bot
+from aiogram.types import LinkPreviewOptions
 
 from bot import keyboards, texts
 from bot.config import Settings
@@ -12,8 +13,46 @@ from bot.db import User, UserRepository
 from bot.services import quiz
 
 
-async def send_start(bot: Bot, chat_id: int) -> None:
-    await bot.send_message(chat_id, texts.START, reply_markup=keyboards.start())
+# Если адрес сайта не задан — документы на Яндекс Диске.
+FALLBACK_DOCUMENTS = {
+    "offer": "https://disk.yandex.ru/i/jop5s3l2ET0fZA",
+    "privacy": "https://disk.yandex.ru/i/Uh9dE3r1kTEW_w",
+    "consent": "https://disk.yandex.ru/i/Nix9lBfg9JXptQ",
+    "marketing": "https://disk.yandex.ru/i/Ah007NR6vaxaTg",
+}
+SITE_DOCUMENT_PATHS = {
+    "offer": "offer",
+    "privacy": "privacy",
+    "consent": "consent",
+    "marketing": "marketing-consent",
+}
+
+
+def document_urls(settings: Settings) -> dict[str, str]:
+    """Ссылки на оферту, политику и согласия — страницы на сайте."""
+    if not settings.site_url:
+        return dict(FALLBACK_DOCUMENTS)
+    base = settings.site_url if settings.site_url.endswith("/") else settings.site_url + "/"
+    base = urlunsplit(urlsplit(base)._replace(query="", fragment=""))
+    return {key: urljoin(base, path) for key, path in SITE_DOCUMENT_PATHS.items()}
+
+
+async def send_start(bot: Bot, settings: Settings, user: User) -> None:
+    """Приветствие. Кто ещё не принял документы — сначала видит их и кнопку согласия."""
+    if user.accepted_terms:
+        await bot.send_message(user.user_id, texts.START, reply_markup=keyboards.start())
+        return
+    await bot.send_message(user.user_id, texts.START)
+    await send_consent(bot, settings, user.user_id)
+
+
+async def send_consent(bot: Bot, settings: Settings, chat_id: int) -> None:
+    await bot.send_message(
+        chat_id,
+        texts.CONSENT.format(**{k: html.escape(v) for k, v in document_urls(settings).items()}),
+        reply_markup=keyboards.accept_terms(),
+        link_preview_options=LinkPreviewOptions(is_disabled=True),
+    )
 
 
 async def send_question(bot: Bot, chat_id: int, number: int) -> None:

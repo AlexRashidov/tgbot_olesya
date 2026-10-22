@@ -63,7 +63,7 @@ class PaymentService:
 
     async def create_link(self, method: PayMethod, channel: OrderChannel, *, user_id: int | None = None,
                           full_name: str | None = None, email: str | None = None,
-                          phone: str | None = None) -> PaymentLink | None:
+                          phone: str | None = None, marketing_consent: bool = False) -> PaymentLink | None:
         s = self._settings
         automatic = (method == PayMethod.RU and self._tbank is not None and s.tbank_enabled) or (
             method == PayMethod.FOREIGN and s.prodamus_enabled
@@ -75,6 +75,7 @@ class PaymentService:
         order = await self._orders.create(
             uuid.uuid4().hex, channel, method, s.price_rub,
             user_id=user_id, full_name=full_name, email=email, phone=phone,
+            marketing_consent=marketing_consent,
         )
         if channel == OrderChannel.SITE and s.site_url:
             success_url = _with_query(s.site_url, order=order.order_id)
@@ -181,6 +182,7 @@ class PaymentService:
                 email=html.escape(order.email or "—"),
                 phone=html.escape(order.phone or "—"),
                 method=texts.METHOD_TITLES[order.method],
+                marketing="да" if order.marketing_consent else "нет",
             ))
 
     def access_links(self) -> dict[str, str]:

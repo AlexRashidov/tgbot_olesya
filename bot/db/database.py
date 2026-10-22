@@ -77,7 +77,8 @@ CREATE TABLE IF NOT EXISTS text_overrides (
 
 # Колонки, добавленные после первого запуска: создаются в существующей базе автоматически.
 MIGRATIONS = {
-    "users": {"email": "TEXT"},
+    "users": {"email": "TEXT", "consent_at": "INTEGER"},
+    "orders": {"marketing_consent": "INTEGER NOT NULL DEFAULT 0"},
 }
 
 
