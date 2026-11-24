@@ -63,7 +63,7 @@ CONSENT = (
 START_TEST_IN_PROGRESS ="Ты уже начал тест. Можно продолжить с того вопроса, на котором остановился."
 
 # ---------- 3. Вопросы теста ----------
-# Порядок вариантов: А, Б, В, Г, Д (соответствие категориям — в constants.ANSWER_CATEGORIES).
+# Порядок вариантов: А, Б, В, Г, Д (соответствие категориям — в constants.ANSWER_CATEGORIES)).
 
 QUESTIONS: tuple[tuple[str, tuple[str, str, str, str, str]], ...] = (
     (
